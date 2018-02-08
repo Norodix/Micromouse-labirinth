@@ -25,7 +25,8 @@ public:
 		cleared = false;
 	}
 };
-#define gridsize 15
+
+#define gridsize 10
 #define t_straight 1
 #define t_corner 2
 
@@ -78,6 +79,7 @@ private:
 	}
 	friend void join(node* graph, int first, int second);
 	friend void separate(node* grid, int first, int second);
+	
 };
 
 void join(node* graph, int first, int second)
@@ -142,6 +144,13 @@ void draw(CImg <unsigned char>(*im), vector <cell> grid)
 
 bool collinear(int x1, int y1, int x2, int y2, int x3, int y3) {
 	return (y1 - y2) * (x1 - x3) == (y1 - y3) * (x1 - x2);
+}
+
+bool diagonal(node* graph, int index, int edge)
+{
+	if (graph[index].edgen < edge) return false;
+	if ((graph[index].edges[edge] / gridsize == index / gridsize) || (graph[index].edges[edge] % gridsize == index % gridsize)) return false;
+	else return true;
 }
 
 int _tmain(int argc, _TCHAR* argv[])
@@ -395,6 +404,74 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		printf("Shortcuts: %i\n", connections);
 		printf("Iterations: %i\n", iterations);
+#pragma endregion
+
+#pragma region "Hibás átlók keresése"
+		found = true;
+		iterations = 0;
+		int separations = 0;
+		while (found)
+		{
+			iterations++;
+			found = false;
+			separations = 0;
+			for (INT16 i = 0; i < gridsize*gridsize; i++)
+			{
+				for (INT8 k = 0; k < graph[i].edgen; k++)
+				{
+					bool connected = false;
+					if (graph[i].edges[k] % gridsize < i % gridsize) connected = true;
+					else if (diagonal(graph, i, k))
+					{
+						int current = i;
+						int step1, step2; //léptetések
+						if (graph[i].edges[k] / gridsize > i / gridsize) //jobbra lefelé
+						{
+							step1 = 1;
+							step2 = gridsize;
+						}
+						else //jobbra felfelé
+						{
+							step1 = 1;
+							step2 = -gridsize;
+						}
+						int dist = abs(i / gridsize - graph[i].edges[k] / gridsize);
+						connected = true;
+						for (int j = 0; j < dist; j++)
+						{
+							if (!graph[current].connected(current + step1)) connected = false;
+							current += step1;
+							if (!graph[current].connected(current + step2)) connected = false;
+							current += step2;
+						}
+						if (!connected)
+						{
+							current = i;
+							connected = true;
+							for (int j = 0; j < dist; j++)
+							{
+								if (!graph[current].connected(current + step2)) connected = false;
+								current += step2;
+								if (!graph[current].connected(current + step1)) connected = false;
+								current += step1;
+							}
+						}
+					}
+					else connected = true;
+					if (!connected)
+					{
+						printf("separated %i and %i\n", i, graph[i].edges[k]);
+						separate(graph, i, graph[i].edges[k]);
+						found = true;
+						separations++;
+						k--;
+					}
+
+				}
+			}
+			printf("iteration: %i\nseparations: %i\n", iterations, separations);
+		}
+		
 #pragma endregion
 
 #pragma region "Élhosszok"
